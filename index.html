@@ -1,369 +1,451 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>卡皮巴拉賽車 - Z軸旋轉修正版</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>經典超級瑪莉 - HTML 版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #000; }
-        canvas { display: block; }
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #5c94fc; /* 經典藍天色 */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            padding: 20px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            height: 100vh;
         }
-        .control-btn {
-            pointer-events: auto;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(5px);
-            border-radius: 15px;
-            width: 70px;
-            height: 70px;
+
+        #game-container {
+            flex-grow: 1;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        canvas {
+            background-color: #5c94fc;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            border: 4px solid #000;
+            max-width: 100%;
+            image-rendering: pixelated;
+        }
+
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #000;
+            pointer-events: none;
             font-size: 24px;
-            user-select: none;
-            touch-action: none;
         }
-        .control-btn:active { background: rgba(255, 255, 255, 0.4); }
-        #speedometer { font-size: 32px; font-weight: bold; }
-        #footer {
-            position: fixed;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.9);
-            font-size: 14px;
-            pointer-events: auto;
-            background: rgba(0,0,0,0.5);
-            padding: 8px 20px;
-            border-radius: 30px;
-            z-index: 1000;
+
+        .footer {
+            background: #000;
+            color: white;
             text-align: center;
-            white-space: nowrap;
+            padding: 10px;
+            font-size: 14px;
         }
-        #footer a { color: #00e5ff; text-decoration: none; font-weight: bold; }
+
+        .footer a {
+            color: #ffeb3b;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        #start-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+
+        .btn {
+            background: #e74c3c;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            margin-top: 20px;
+            border: none;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
 
-    <div id="ui-layer">
-        <div class="flex justify-between items-start">
-            <div id="status">
-                <div id="speedometer">時速: 0 km/h</div>
-                <div class="text-xl">Z 軸已旋轉 -90 度！</div>
-            </div>
-        </div>
-
-        <div class="flex justify-between items-end md:hidden">
-            <div class="grid grid-cols-3 gap-2">
-                <div></div>
-                <div id="btn-up" class="control-btn">↑</div>
-                <div></div>
-                <div id="btn-left" class="control-btn">←</div>
-                <div id="btn-down" class="control-btn">↓</div>
-                <div id="btn-right" class="control-btn">→</div>
-            </div>
-        </div>
+<div id="game-container">
+    <div class="ui-panel">
+        <div>MARIO: <span id="score">000000</span></div>
+        <div>COINS: <span id="coins">0</span></div>
     </div>
 
-    <div id="footer">
-        版權所有 © 2025 PandaPanda的AI日常 All Rights Reserved. 點擊 <a href="https://60913panda.github.io/PPAW/" target="_blank">PandaPanda的AI日常</a>
+    <div id="start-screen">
+        <h1 class="text-6xl mb-4 font-bold">SUPER MARIO</h1>
+        <p class="text-xl">使用 方向鍵 移動與跳躍</p>
+        <button class="btn" onclick="startGame()">開始遊戲</button>
     </div>
 
-    <script>
-        let scene, camera, renderer, clock;
-        let player, playerWheels = [];
-        let aiCars = [];
-        let speed = 0;
-        let rotation = 0;
-        const maxSpeed = 0.8;
-        const acceleration = 0.02;
-        const friction = 0.98;
-        const turnSpeed = 0.04;
+    <canvas id="gameCanvas"></canvas>
+</div>
 
-        const keys = { w: false, a: false, s: false, d: false, up: false, left: false, right: false, down: false };
+<footer class="footer">
+    版權所有 © 2025 <a href="https://60913panda.github.io/PPAW/" target="_blank">PandaPanda的AI日常</a> All Rights Reserved.
+</footer>
 
-        window.onload = function() {
-            init();
-            animate();
-        };
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const coinsEl = document.getElementById('coins');
+    const startScreen = document.getElementById('start-screen');
 
-        function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87CEEB);
-            scene.fog = new THREE.Fog(0x87CEEB, 30, 160);
+    // 遊戲常數
+    const TILE_SIZE = 40;
+    const GRAVITY = 0.8;
+    const FRICTION = 0.8;
+    const JUMP_FORCE = -15;
+    const SPEED = 5;
 
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            document.body.appendChild(renderer.domElement);
+    // 畫布大小
+    canvas.width = 800;
+    canvas.height = 480;
 
-            clock = new THREE.Clock();
+    let gameActive = false;
+    let score = 0;
+    let coins = 0;
+    let scrollX = 0;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
+    // 按鍵監聽
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
 
-            const sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            sunLight.position.set(50, 100, 50);
-            sunLight.castShadow = true;
-            sunLight.shadow.camera.left = -70;
-            sunLight.shadow.camera.right = 70;
-            sunLight.shadow.camera.top = 70;
-            sunLight.shadow.camera.bottom = -70;
-            sunLight.shadow.mapSize.width = 2048;
-            sunLight.shadow.mapSize.height = 2048;
-            scene.add(sunLight);
-
-            const groundGeo = new THREE.PlaneGeometry(2000, 2000);
-            const groundMat = new THREE.MeshPhongMaterial({ color: 0x7cfc00 });
-            const ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
-
-            createTrack();
-
-            // 創建玩家
-            player = new THREE.Group();
-            const playerModel = createCapybaraModel(0x8B4513, playerWheels);
-            player.add(playerModel);
-            scene.add(player);
-            player.position.set(40, 0, 0); 
-
-            // 創建 AI
-            const aiConfigs = [
-                { color: 0xd2a679, radius: 35, speed: 0.006, offset: 0 },
-                { color: 0x5c4033, radius: 45, speed: 0.007, offset: Math.PI * 0.7 },
-                { color: 0xcc9966, radius: 50, speed: 0.005, offset: Math.PI * 1.3 }
-            ];
-
-            aiConfigs.forEach(config => {
-                const aiGroup = new THREE.Group();
-                const aiWheels = [];
-                const aiModel = createCapybaraModel(config.color, aiWheels);
-                aiGroup.add(aiModel);
-                scene.add(aiGroup);
-                aiCars.push({
-                    group: aiGroup,
-                    wheels: aiWheels,
-                    angle: config.offset,
-                    baseRadius: config.radius,
-                    baseSpeed: config.speed
-                });
-            });
-
-            createEnvironment();
-
-            window.addEventListener('keydown', e => handleKey(e.key, true));
-            window.addEventListener('keyup', e => handleKey(e.key, false));
-            window.addEventListener('resize', onWindowResize);
-            setupTouchEvents();
+    class Player {
+        constructor() {
+            this.reset();
         }
 
-        function createCapybaraModel(color, wheelList) {
-            const container = new THREE.Group();
-            
-            // 根據指令：軸 Z 改變 -90 度
-            container.rotation.z = -Math.PI / 2;
-            // 補償旋轉後的位移，讓模型看起來依然在地面上
-            container.position.y = 0.5;
-
-            const bodyGeo = new THREE.BoxGeometry(1, 0.8, 2);
-            const bodyMat = new THREE.MeshPhongMaterial({ color: color });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 0.6;
-            body.castShadow = true;
-            container.add(body);
-
-            const headGeo = new THREE.BoxGeometry(0.8, 0.7, 0.8);
-            const head = new THREE.Mesh(headGeo, bodyMat);
-            head.position.set(0, 1, 0.8);
-            head.castShadow = true;
-            container.add(head);
-
-            const noseGeo = new THREE.BoxGeometry(0.5, 0.4, 0.3);
-            const noseMat = new THREE.MeshPhongMaterial({ color: 0x3d2b1f });
-            const nose = new THREE.Mesh(noseGeo, noseMat);
-            nose.position.set(0, 0.9, 1.2);
-            container.add(nose);
-
-            const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-            const eyeMat = new THREE.MeshPhongMaterial({ color: 0x000000 });
-            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-            eyeL.position.set(0.35, 1.1, 1.05);
-            container.add(eyeL);
-            const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-            eyeR.position.set(-0.35, 1.1, 1.05);
-            container.add(eyeR);
-
-            const wheelGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-            const wheelMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
-            const positions = [
-                [0.5, 0.2, 0.7], [-0.5, 0.2, 0.7],
-                [0.5, 0.2, -0.7], [-0.5, 0.2, -0.7]
-            ];
-            positions.forEach(pos => {
-                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-                wheel.position.set(...pos);
-                container.add(wheel);
-                if (wheelList) wheelList.push(wheel);
-            });
-
-            return container;
+        reset() {
+            this.x = 100;
+            this.y = 300;
+            this.width = 32;
+            this.height = 32;
+            this.vx = 0;
+            this.vy = 0;
+            this.onGround = false;
+            this.direction = 1; // 1: right, -1: left
         }
 
-        function createTrack() {
-            const trackPoints = [];
-            const radius = 55;
-            for(let i = 0; i <= 100; i++) {
-                const a = (i / 100) * Math.PI * 2;
-                trackPoints.push(new THREE.Vector2(Math.cos(a) * radius, Math.sin(a) * radius));
+        update() {
+            // 水平移動
+            if (keys['ArrowRight']) {
+                this.vx += 0.5;
+                this.direction = 1;
+            } else if (keys['ArrowLeft']) {
+                this.vx -= 0.5;
+                this.direction = -1;
             }
 
-            const trackShape = new THREE.Shape(trackPoints);
-            const innerPoints = [];
-            const innerRadius = 30;
-            for(let i = 0; i <= 100; i++) {
-                const a = (i / 100) * Math.PI * 2;
-                innerPoints.push(new THREE.Vector2(Math.cos(a) * innerRadius, Math.sin(a) * innerRadius));
-            }
-            trackShape.holes.push(new THREE.Path(innerPoints));
+            this.vx *= FRICTION;
 
-            const trackGeo = new THREE.ExtrudeGeometry(trackShape, { depth: 0.15, bevelEnabled: false });
-            const trackMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
-            const track = new THREE.Mesh(trackGeo, trackMat);
-            track.rotation.x = -Math.PI / 2;
-            track.position.y = 0.01;
-            track.receiveShadow = true;
-            scene.add(track);
-
-            const startLine = new THREE.Mesh(
-                new THREE.BoxGeometry(25, 0.1, 2),
-                new THREE.MeshPhongMaterial({ color: 0xffffff })
-            );
-            startLine.position.set(42.5, 0.08, 0);
-            scene.add(startLine);
-        }
-
-        function createEnvironment() {
-            for(let i = 0; i < 100; i++) {
-                const x = (Math.random() - 0.5) * 300;
-                const z = (Math.random() - 0.5) * 300;
-                const dist = Math.sqrt(x*x + z*z);
-                if(dist > 25 && dist < 65) continue;
-
-                const tree = new THREE.Group();
-                const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.7, 3, 0.7), new THREE.MeshPhongMaterial({color: 0x5d3a1a}));
-                trunk.position.y = 1.5;
-                tree.add(trunk);
-
-                const leaves = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshPhongMaterial({color: 0x2e7d32}));
-                leaves.position.y = 4;
-                tree.add(leaves);
-
-                tree.position.set(x, 0, z);
-                scene.add(tree);
-            }
-        }
-
-        function handleKey(key, isDown) {
-            const k = key.toLowerCase();
-            if (k === 'w' || key === 'ArrowUp') keys.up = isDown;
-            if (k === 's' || key === 'ArrowDown') keys.down = isDown;
-            if (k === 'a' || key === 'ArrowLeft') keys.left = isDown;
-            if (k === 'd' || key === 'ArrowRight') keys.right = isDown;
-        }
-
-        function setupTouchEvents() {
-            const btns = { 'btn-up': 'up', 'btn-down': 'down', 'btn-left': 'left', 'btn-right': 'right' };
-            Object.keys(btns).forEach(id => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.addEventListener('touchstart', (e) => { e.preventDefault(); keys[btns[id]] = true; });
-                el.addEventListener('touchend', (e) => { e.preventDefault(); keys[btns[id]] = false; });
-            });
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function updatePhysics() {
-            if (keys.up) speed += acceleration;
-            else if (keys.down) speed -= acceleration;
-            else speed *= friction;
-
-            speed = Math.max(-maxSpeed/2, Math.min(maxSpeed, speed));
-
-            if (Math.abs(speed) > 0.01) {
-                const turnDir = speed > 0 ? 1 : -1;
-                if (keys.left) rotation += turnSpeed * turnDir;
-                if (keys.right) rotation -= turnSpeed * turnDir;
-            }
-
-            player.position.x += Math.sin(rotation) * speed;
-            player.position.z += Math.cos(rotation) * speed;
-            player.rotation.y = rotation;
-
-            playerWheels.forEach((w, i) => {
-                w.rotation.x += speed * 2;
-                if(i < 2) {
-                    const targetSteer = keys.left ? 0.4 : (keys.right ? -0.4 : 0);
-                    w.rotation.y = THREE.MathUtils.lerp(w.rotation.y, targetSteer, 0.1);
+            // 跳躍
+            if (keys['Space'] || keys['ArrowUp'] || keys['KeyW']) {
+                if (this.onGround) {
+                    this.vy = JUMP_FORCE;
+                    this.onGround = false;
                 }
-            });
+            }
 
-            document.getElementById('speedometer').innerText = `時速: ${Math.abs(Math.round(speed * 100))} km/h`;
+            // 重力
+            this.vy += GRAVITY;
+
+            // 更新位置
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // 邊界檢查
+            if (this.x < 0) this.x = 0;
+            
+            // 死亡檢查
+            if (this.y > canvas.height) {
+                gameOver();
+            }
         }
 
-        function updateAI() {
-            aiCars.forEach(ai => {
-                ai.angle += ai.baseSpeed;
-                const posX = Math.cos(ai.angle) * ai.baseRadius;
-                const posZ = Math.sin(ai.angle) * ai.baseRadius;
-                ai.group.position.set(posX, 0, posZ);
-                ai.group.rotation.y = -ai.angle + Math.PI / 2;
+        draw() {
+            ctx.fillStyle = '#ff0000'; // 帽子與衣服
+            ctx.fillRect(this.x - scrollX, this.y, this.width, this.height);
+            
+            // 畫個簡單的臉部特徵
+            ctx.fillStyle = '#ffdbac'; // 皮膚
+            ctx.fillRect(this.x - scrollX + (this.direction === 1 ? 16 : 0), this.y + 4, 16, 12);
+            
+            ctx.fillStyle = '#0000ff'; // 吊帶褲
+            ctx.fillRect(this.x - scrollX, this.y + 16, this.width, 16);
+        }
+    }
 
-                ai.wheels.forEach(w => {
-                    w.rotation.x += ai.baseSpeed * 20;
-                });
-            });
+    class Enemy {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.width = 32;
+            this.height = 32;
+            this.vx = -2;
+            this.alive = true;
         }
 
-        function updateCamera() {
-            const offset = new THREE.Vector3(
-                -Math.sin(rotation) * 12,
-                6,
-                -Math.cos(rotation) * 12
-            );
-            const targetPos = player.position.clone().add(offset);
-            camera.position.lerp(targetPos, 0.1);
-            camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
+        update() {
+            if (!this.alive) return;
+            this.x += this.vx;
+            
+            // 簡單的障礙轉向
+            const tileX = Math.floor((this.x + (this.vx > 0 ? this.width : 0)) / TILE_SIZE);
+            const tileY = Math.floor((this.y + this.height / 2) / TILE_SIZE);
+            if (levelData[tileY] && levelData[tileY][tileX] === 1) {
+                this.vx *= -1;
+            }
         }
 
-        function animate() {
-            requestAnimationFrame(animate);
-            updatePhysics();
-            updateAI();
-            updateCamera();
-            renderer.render(scene, camera);
+        draw() {
+            if (!this.alive) return;
+            ctx.fillStyle = '#8B4513'; // 咖啡色 (栗子頭)
+            ctx.beginPath();
+            ctx.arc(this.x - scrollX + 16, this.y + 16, 16, 0, Math.PI * 2);
+            ctx.fill();
+            // 眼睛
+            ctx.fillStyle = 'white';
+            ctx.fillRect(this.x - scrollX + 8, this.y + 8, 4, 4);
+            ctx.fillRect(this.x - scrollX + 20, this.y + 8, 4, 4);
         }
-    </script>
+    }
+
+    // 地圖數據 (0: 空, 1: 地板/磚塊, 2: 金幣, 3: 問號箱)
+    const levelMap = [
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "                                                                                ",
+        "               222                                                              ",
+        "                                                                                ",
+        "          3  13131                                                              ",
+        "                                     222                                        ",
+        "                                    11111                                       ",
+        "                    1111                                                        ",
+        "                                                                                ",
+        "11111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "11111111111111111111111111111111111111111111111111111111111111111111111111111111"
+    ];
+
+    let levelData = [];
+    let enemies = [];
+    let player = new Player();
+
+    function initLevel() {
+        levelData = levelMap.map(row => row.split('').map(char => {
+            if (char === '1') return 1;
+            if (char === '2') return 2;
+            if (char === '3') return 3;
+            return 0;
+        }));
+
+        enemies = [
+            new Enemy(600, 400),
+            new Enemy(1200, 400),
+            new Enemy(1800, 400)
+        ];
+    }
+
+    function checkCollisions() {
+        const p = player;
+        
+        // 腳下碰撞檢測點
+        const footY = Math.floor((p.y + p.height) / TILE_SIZE);
+        const headY = Math.floor(p.y / TILE_SIZE);
+        const leftX = Math.floor(p.x / TILE_SIZE);
+        const rightX = Math.floor((p.x + p.width) / TILE_SIZE);
+
+        p.onGround = false;
+
+        // 地形碰撞
+        for (let row = 0; row < levelData.length; row++) {
+            for (let col = 0; col < levelData[row].length; col++) {
+                const cell = levelData[row][col];
+                if (cell === 0) continue;
+
+                const tx = col * TILE_SIZE;
+                const ty = row * TILE_SIZE;
+
+                // 碰撞判定 AABB
+                if (p.x < tx + TILE_SIZE && p.x + p.width > tx && 
+                    p.y < ty + TILE_SIZE && p.y + p.height > ty) {
+                    
+                    if (cell === 1 || cell === 3) {
+                        // 處理撞到方塊
+                        const overlapX = Math.min(p.x + p.width - tx, tx + TILE_SIZE - p.x);
+                        const overlapY = Math.min(p.y + p.height - ty, ty + TILE_SIZE - p.y);
+
+                        if (overlapX < overlapY) {
+                            if (p.x < tx) p.x = tx - p.width;
+                            else p.x = tx + TILE_SIZE;
+                            p.vx = 0;
+                        } else {
+                            if (p.y < ty) {
+                                p.y = ty - p.height;
+                                p.vy = 0;
+                                p.onGround = true;
+                            } else {
+                                p.y = ty + TILE_SIZE;
+                                p.vy = 0;
+                                // 如果是問號箱，可以觸發機制
+                                if (cell === 3) {
+                                    levelData[row][col] = 1; // 變回普通磚塊
+                                    coins++;
+                                    score += 100;
+                                    updateUI();
+                                }
+                            }
+                        }
+                    } else if (cell === 2) {
+                        // 吃到金幣
+                        levelData[row][col] = 0;
+                        coins++;
+                        score += 200;
+                        updateUI();
+                    }
+                }
+            }
+        }
+
+        // 敵人碰撞
+        enemies.forEach(e => {
+            if (!e.alive) return;
+            if (p.x < e.x + e.width && p.x + p.width > e.x && 
+                p.y < e.y + e.height && p.y + p.height > e.y) {
+                
+                // 如果從上方踩
+                if (p.vy > 0 && p.y + p.height < e.y + 20) {
+                    e.alive = false;
+                    p.vy = -10;
+                    score += 500;
+                    updateUI();
+                } else {
+                    gameOver();
+                }
+            }
+        });
+    }
+
+    function updateUI() {
+        scoreEl.innerText = score.toString().padStart(6, '0');
+        coinsEl.innerText = coins;
+    }
+
+    function gameOver() {
+        gameActive = false;
+        alert('遊戲結束！得分: ' + score);
+        startScreen.style.display = 'flex';
+        player.reset();
+        scrollX = 0;
+        score = 0;
+        coins = 0;
+        updateUI();
+        initLevel();
+    }
+
+    function startGame() {
+        startScreen.style.display = 'none';
+        initLevel();
+        gameActive = true;
+        requestAnimationFrame(gameLoop);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 背景裝飾 (簡單的雲)
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(200 - (scrollX * 0.2 % 800), 100, 30, 0, Math.PI * 2);
+        ctx.arc(230 - (scrollX * 0.2 % 800), 100, 40, 0, Math.PI * 2);
+        ctx.arc(260 - (scrollX * 0.2 % 800), 100, 30, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 繪製地圖
+        for (let row = 0; row < levelData.length; row++) {
+            for (let col = 0; col < levelData[row].length; col++) {
+                const cell = levelData[row][col];
+                const x = col * TILE_SIZE - scrollX;
+                const y = row * TILE_SIZE;
+
+                if (x < -TILE_SIZE || x > canvas.width) continue;
+
+                if (cell === 1) {
+                    ctx.fillStyle = '#8B4513'; // 土色地板
+                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#5D2E0A';
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                } else if (cell === 2) {
+                    ctx.fillStyle = '#FFD700'; // 金幣
+                    ctx.beginPath();
+                    ctx.arc(x + 20, y + 20, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (cell === 3) {
+                    ctx.fillStyle = '#FFA500'; // 問號箱
+                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                    ctx.fillStyle = 'white';
+                    ctx.font = '20px Arial';
+                    ctx.fillText('?', x + 15, y + 28);
+                }
+            }
+        }
+
+        // 繪製敵人
+        enemies.forEach(e => e.draw());
+
+        // 繪製玩家
+        player.draw();
+    }
+
+    function gameLoop() {
+        if (!gameActive) return;
+
+        player.update();
+        enemies.forEach(e => e.update());
+        checkCollisions();
+
+        // 攝影機追隨
+        if (player.x > canvas.width / 2) {
+            scrollX = player.x - canvas.width / 2;
+        }
+
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // 初始化 UI
+    updateUI();
+</script>
+
 </body>
 </html>
